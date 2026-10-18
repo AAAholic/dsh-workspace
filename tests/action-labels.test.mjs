@@ -30,6 +30,9 @@ test('search arguments become file checks instead of displayed patterns', () => 
   assert.equal(summarizeCommand("grep --include '*.js' 'Authorization' src").actionLabel, '检查 src')
   assert.equal(summarizeCommand("rg --type-add 'custom:*.mjs' --type custom 'Authorization' src").actionLabel, '检查 src')
   assert.equal(summarizeCommand("grep --exclude-dir generated --include='*.js' -e 'Authorization' src").actionLabel, '检查 src')
+  assert.equal(summarizeCommand('grep -r pattern src').actionLabel, '检查 src')
+  assert.equal(summarizeCommand('grep -r -T pattern src').actionLabel, '检查 src')
+  assert.equal(summarizeCommand('rg -r replacement pattern src').actionLabel, '检查 src')
 })
 
 test('git actions describe the operation without exposing commit or credential arguments', () => {
@@ -72,12 +75,37 @@ test('discarding or duplicating descriptors does not create file actions', () =>
   assert.equal(summarizeCommand('cat src/config.mjs >/dev/stdout').actionLabel, '打开 config.mjs')
 })
 
-test('multi-command calls retain distinct actions within a compact label', () => {
-  assert.equal(summarizeCommand('cd /workspace && cat src/main.mjs; git diff -- src/main.mjs').actionLabel, '打开 main.mjs；检查 main.mjs')
+test('multi-command calls show one useful activity without compound labels', () => {
+  assert.equal(summarizeCommand('cd /workspace && cat src/main.mjs; git diff -- src/main.mjs').actionLabel, '检查 main.mjs')
   assert.equal(summarizeCommand('cat src/main.mjs; cat src/main.mjs').actionLabel, '打开 main.mjs')
-  assert.equal(summarizeCommand('cat a; cat b; cat c').actionLabel, '打开 a；打开 b 等操作')
+  assert.equal(summarizeCommand('cat a; cat b; cat c').actionLabel, '打开 c')
   assert.equal(summarizeCommand('bash -lc \'cd /workspace && cat "src/a b.mjs"\'').actionLabel, '打开 a b.mjs')
   assert.equal(summarizeCommand('cd "/Users/person/project" && du -sh ai_retouch && ls ai_retouch | head -50 && echo "done"').actionLabel, '检查 ai_retouch')
+  assert.equal(summarizeCommand('du -sh ai_retouch && find ai_retouch -type f | sort | head -50').actionLabel, '检查 ai_retouch')
+  assert.equal(summarizeCommand('find ai_retouch -type f | sort | uniq | head -50').actionLabel, '查找 ai_retouch')
+  assert.equal(summarizeCommand('cat src/main.mjs && printf x > src/config.mjs && npm test').actionLabel, '运行测试')
+  assert.equal(summarizeCommand('ls src | sort | wc -l').actionLabel, '检查 src')
+  assert.equal(summarizeCommand('sort src/names.txt').actionLabel, '整理 names.txt')
+})
+
+test('cleanup operations outrank inspection and retain their real meaning', () => {
+  assert.equal(summarizeCommand('du -sh ai_retouch && rm -rf ai_retouch').actionLabel, '删除 ai_retouch')
+  assert.equal(summarizeCommand('find ai_retouch -maxdepth 1 -mindepth 1 ! -name out -exec rm -rf {} +').actionLabel, '清理 ai_retouch')
+  assert.equal(summarizeCommand('find ai_retouch -type f -delete && ls ai_retouch').actionLabel, '清理 ai_retouch')
+  assert.equal(summarizeCommand('find ai_retouch -type f -print0 | xargs -0 rm -f').actionLabel, '删除文件')
+  assert.equal(summarizeCommand('rm src/old.mjs').actionLabel, '删除 old.mjs')
+  assert.equal(summarizeCommand('rm -rf build > cleanup.log').actionLabel, '删除 build')
+  assert.equal(summarizeCommand('find cache -type f -delete > cleanup.log').actionLabel, '清理 cache')
+  assert.equal(summarizeCommand('find cache -type f -exec rm -f {} + > cleanup.log 2>&1').actionLabel, '清理 cache')
+})
+
+test('copy and move identities preserve the source-to-destination direction', () => {
+  for (const command of ['cp', 'mv']) {
+    const forward = summarizeCommand(`${command} src/a.txt dst/b.txt`)
+    const reverse = summarizeCommand(`${command} dst/b.txt src/a.txt`)
+    assert.notEqual(forward.actionGroupKey, reverse.actionGroupKey)
+    assert.equal(summarizeCommand(`${command} src/a.txt dst/b.txt`).actionGroupKey, forward.actionGroupKey)
+  }
 })
 
 test('unknown commands expose the program only and never execute substitutions', () => {

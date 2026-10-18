@@ -566,3 +566,92 @@ test('a successful retry clears the earlier error from its merged action while r
   assert.match(groups[0].original, /\[failed-attempt\]/)
   assert.match(groups[0].original, /\[successful-retry\]/)
 })
+
+test('inspection and discovery of one target share a concise activity without losing live calls', () => {
+  const model = actual([
+    activity('inspect', 'bash', { command: 'cd /workspace && du -sh ai_retouch && ls ai_retouch | head -50 && echo done' }),
+    activity('find', 'bash', { command: 'find ai_retouch -maxdepth 1 -mindepth 1 ! -name out -type f | sort' }, { state: 'running', seq: 20 }),
+  ])
+  const groups = stage(model, 'execution').children
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].label, '检查 ai_retouch')
+  assert.equal(groups[0].status, 'in_progress')
+  assert.deepEqual(groups[0].callIds, ['inspect', 'find'])
+  assert.ok(groups[0].callIds.every(id => groups[0].original.includes(`[${id}]`)))
+  assert.doesNotMatch(groups[0].label, /等操作|；|sort|head/)
+})
+
+test('semantic deduplication keeps other paths, writes, tests and cleanup distinct', () => {
+  const model = actual([
+    activity('check-a', 'bash', { command: 'ls a/config.mjs' }),
+    activity('check-b', 'bash', { command: 'find b/config.mjs' }),
+    activity('write-a', 'write', { path: 'a/config.mjs' }),
+    activity('test-a', 'bash', { command: 'node --test a/config.mjs' }),
+  ])
+  assert.deepEqual(stage(model, 'execution').children.map(group => group.callIds), [['check-a'], ['check-b'], ['write-a'], ['test-a']])
+  const sameBasename = actual([
+    activity('read-a', 'read', { path: 'a/config.mjs' }), activity('read-b', 'read', { path: 'b/config.mjs' }),
+    activity('write-a', 'write', { path: 'a/config.mjs' }), activity('write-b', 'write', { path: 'b/config.mjs' }),
+  ])
+  assert.deepEqual(stage(sameBasename, 'execution').children.map(group => group.callIds), [['read-a'], ['read-b'], ['write-a'], ['write-b']])
+  const cleanup = actual([
+    activity('check', 'bash', { command: 'ls ai_retouch' }),
+    activity('clean', 'bash', { command: 'find ai_retouch -type f -delete' }),
+  ])
+  assert.deepEqual(stage(cleanup, 'execution').children.map(group => group.label), ['检查 ai_retouch', '清理 ai_retouch'])
+})
+
+test('merged inspection retries and disconnections preserve the existing status rules', () => {
+  const nodes = [activity('failed-inspection', 'bash', { command: 'ls ai_retouch' }, { state: 'error' }),
+    activity('retry-discovery', 'bash', { command: 'find ai_retouch -type f' }, { seq: 20 })]
+  assert.equal(stage(actual(nodes), 'execution').children[0].status, 'completed')
+  assert.deepEqual(stage(actual(nodes), 'execution').children[0].callIds, ['failed-inspection', 'retry-discovery'])
+  const offline = actual([nodes[0], activity('retry-discovery', 'bash', { command: 'find ai_retouch -type f' }, { state: 'running', seq: 20 })], { connection: 'disconnected' })
+  assert.equal(stage(offline, 'execution').children[0].status, 'unknown')
+})
+
+test('task labels remove phase wrappers while retaining real actions and constraints', () => {
+  for (const [source, expected] of [
+    ['分析规划：检查目录结构', '检查目录结构'],
+    ['任务执行：检查目录结构', '检查目录结构'],
+    ['实施步骤：更新 progress.mjs', '更新 progress.mjs'],
+    ['步骤一：任务执行：不要删除文件', '不要删除文件'],
+    ['总结返回：汇总改动', '汇总改动'],
+    ['任务执行：只读：检查配置', '只读：检查配置'],
+  ]) assert.equal(conciseTaskLabel(source), expected)
+  assert.equal(conciseTaskLabel('Review: 删除文件流程'), '审查：删除文件流程')
+})
+
+test('duplicate task content is shown once per phase with every original entry retained', () => {
+  const model = derive({ todos: rows(['任务执行：检查目录结构', 'completed'], ['实施步骤：检查目录结构', 'in_progress'], ['检查目录结构', 'pending']) })
+  const tasks = taskNodes(model)
+  assert.equal(tasks.length, 1)
+  assert.equal(tasks[0].label, '检查目录结构')
+  assert.equal(tasks[0].status, 'in_progress')
+  assert.deepEqual(tasks[0].taskIds, ['task:0', 'task:1', 'task:2'])
+  assert.equal(tasks[0].original, '任务执行：检查目录结构\n实施步骤：检查目录结构\n检查目录结构')
+  const exact = derive({ todos: rows(['检查目录结构', 'pending'], ['检查目录结构', 'completed']) })
+  assert.equal(taskNodes(exact).length, 1)
+  assert.equal(taskNodes(exact)[0].status, 'completed')
+})
+
+test('task deduplication does not merge phases, different paths, or clipped constraints', () => {
+  const model = derive({ todos: rows(
+    ['分析规划：检查目录结构', 'completed'], ['任务执行：检查目录结构', 'in_progress'],
+    ['检查 a/config.mjs', 'pending'], ['检查 b/config.mjs', 'pending'],
+    ['检查目录结构，不要删除文件', 'pending'], ['检查目录结构，清理无用文件', 'pending']) })
+  assert.equal(stage(model, 'planning').total, 1)
+  assert.equal(taskNodes(model).length, 5)
+})
+
+test('a reverse copy or move cannot clear the failed forward operation', () => {
+  for (const command of ['cp', 'mv']) {
+    const model = actual([
+      activity('forward', 'bash', { command: `${command} src/a.txt dst/b.txt` }, { state: 'error', seq: 10 }),
+      activity('reverse', 'bash', { command: `${command} dst/b.txt src/a.txt` }, { seq: 20 }),
+    ])
+    const groups = stage(model, 'execution').children
+    assert.deepEqual(groups.map(group => group.callIds), [['forward'], ['reverse']])
+    assert.deepEqual(groups.map(group => group.status), ['error', 'completed'])
+  }
+})

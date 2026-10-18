@@ -53,6 +53,14 @@ try {
   assert.equal(await page.evaluate(()=>document.querySelector('[data-conversation-content]').getBoundingClientRect().width),884,'inline card reserves actual measured body width');
   assert.equal(await page.evaluate(()=>fixture.attached.element.getBoundingClientRect().width),244);
   assert.equal(await page.evaluate(()=>fixture.attached.element.getBoundingClientRect().height),340,'compact square card uses a 340px height');
+  // Real slot wrappers may have no box. The actual header still defines the
+  // divider the card must sit below, including after the tab strip grows.
+  await page.evaluate(()=>{const header=document.querySelector('header'),slot=document.createElement('div');slot.style.display='contents';header.before(slot);slot.append(header)});await wait();
+  const headerClearance=()=>page.evaluate(()=>fixture.attached.element.getBoundingClientRect().top-document.querySelector('header').getBoundingClientRect().bottom);
+  assert.equal(await headerClearance(),12,'card clears a header inside a display:contents slot');
+  await page.evaluate(()=>document.querySelector('header').style.height='96px');await wait();
+  assert.equal(await headerClearance(),12,'card follows the actual header when its tab strip grows');
+  await page.evaluate(()=>document.querySelector('header').style.height='70px');await wait();
   assert.equal(await page.evaluate(()=>fixture.state.forbidden),0,'native sidebar/layout is never accessed');
   const bar=await page.evaluate(()=>{const s=document.querySelector('[data-conversation-scroll]');return {width:getComputedStyle(s,'::-webkit-scrollbar').width,radius:getComputedStyle(s,'::-webkit-scrollbar-thumb').borderRadius,track:getComputedStyle(s,'::-webkit-scrollbar-track').backgroundColor,standards:getComputedStyle(s).scrollbarWidth}});
   assert.deepEqual(bar,{width:'8px',radius:'999px',track:'rgba(0, 0, 0, 0)',standards:'auto'});
@@ -73,6 +81,7 @@ try {
   assert.equal(await page.evaluate(()=>document.querySelector('[data-conversation-scroll]').scrollTop),before,'typing does not induce parent scroll-padding/caret micro-scroll');
   await page.setViewportSize({width:1280,height:900});await wait();
   assert.equal(await page.evaluate(()=>fixture.attached.getSnapshot().compact),false);
+  assert.equal(await headerClearance(),12,'returning from compact mode keeps the same divider gap');
   assert.equal(await page.evaluate(()=>fixture.attached.getSnapshot().width),230);
   assert.equal(await page.evaluate(()=>document.querySelector('[data-conversation-content]').getBoundingClientRect().width),738,'1280px window stays inline with readable body');
   await page.setViewportSize({width:1100,height:900});await wait();

@@ -271,6 +271,51 @@ try{
   checked('the reported screenshot now shows a clean completed reply and a short package.json action without paths or question marks');
   await page.evaluate(()=>{
     const f=progressFixture;
+    f.turn.status='open';delete f.turn.end;
+    f.statuses.set(new Map([['selected',{running:true}]]));
+    f.session.set({sessionId:'selected',running:true,openState:'open'});
+    f.todos.set([]);
+    const inspected=f.toolNode({kind:'tool-result',callId:'directory-check',call:{name:'bash',argsRaw:JSON.stringify({command:'cd /workspace && du -sh ai_retouch && ls ai_retouch | head -50 && echo done'})},isError:false,time:1720000000010,seq:10});
+    const searching=f.toolNode({callId:'directory-find',name:'bash',argsRaw:JSON.stringify({command:'find ai_retouch -maxdepth 1 -mindepth 1 ! -name out -type f'}),phase:'start',time:1720000000020});
+    f.chat.set(f.toChat([inspected,searching]));
+  });
+  await page.waitForFunction(()=>document.querySelector('.dsw-progress-headline')?.textContent==='进行中');
+  assert.equal(await page.locator('.dsw-progress-subtask').count(),1,'checking and finding the same directory share one action row');
+  assert.equal(await page.locator('.dsw-progress-subtask .dsw-progress-node-label').textContent(),'检查 ai_retouch');
+  assert.equal(await page.locator('.dsw-progress-subtask').getAttribute('data-status'),'in_progress');
+  assert.equal(await page.locator('.dsw-progress-subtask').getAttribute('aria-current'),'step');
+  assert.equal(await page.locator('[data-node-id="execution"]').getAttribute('data-status'),'in_progress');
+  assert.doesNotMatch(await page.locator('.dsw-progress-timeline').innerText(),/等操作|[;；]|head|done|\/workspace/);
+  assert.match(await page.locator('.dsw-progress-subtask .dsw-progress-node-label').getAttribute('title'),/\[directory-check\]/);
+  assert.match(await page.locator('.dsw-progress-subtask .dsw-progress-node-label').getAttribute('title'),/\[directory-find\]/);
+  await page.locator('.dsw-progress-details>summary').click();
+  assert.equal(await page.locator('.dsw-progress-activity').count(),2,'merged overview retains both tool records in details');
+  await page.locator('.dsw-progress-details>summary').click();
+  await snapshot('directory-actions-merged-active-230');
+  checked('duplicate directory checks merge into one short active action with both call records retained');
+  await page.evaluate(()=>progressFixture.todos.set([
+    {content:'任务执行：检查目录结构',status:'completed'},
+    {content:'实施步骤：更新 progress.mjs',status:'in_progress'},
+  ]));
+  await page.waitForFunction(()=>document.querySelectorAll('.dsw-progress-subtask').length===2);
+  assert.deepEqual(await page.locator('.dsw-progress-subtask .dsw-progress-node-label').allTextContents(),['检查目录结构','更新 progress.mjs']);
+  assert.doesNotMatch((await page.locator('.dsw-progress-subtask .dsw-progress-node-label').allTextContents()).join(' '),/任务执行：|实施步骤：/);
+  assert.equal(await page.locator('.dsw-progress-subtask[aria-current=step] .dsw-progress-node-label').textContent(),'更新 progress.mjs');
+  await page.locator('.dsw-progress-details>summary').click();
+  assert.match(await page.locator('[aria-label="完整原文"]').textContent(),/任务执行：检查目录结构/);
+  assert.match(await page.locator('[aria-label="完整原文"]').textContent(),/实施步骤：更新 progress.mjs/);
+  await page.locator('.dsw-progress-details>summary').click();
+  await snapshot('concise-plan-prefixes-230');
+  checked('plan rows omit repeated stage prefixes while retaining current status and original text in details');
+  await page.evaluate(()=>{
+    const f=progressFixture;
+    f.todos.set([]);
+    f.turn.status='closed';f.turn.end={data:{reason:{kind:'completed'}}};
+    f.statuses.set(new Map([['selected',{running:false}]]));
+    f.session.set({sessionId:'selected',running:false,openState:'open'});
+  });
+  await page.evaluate(()=>{
+    const f=progressFixture;
     const settled=(id,name,args,seq)=>f.toolNode({kind:'tool-result',callId:id,call:{name,argsRaw:JSON.stringify(args)},isError:false,time:1720000000000+seq,seq});
     const records=[...Array.from({length:8},(_,i)=>settled('read-'+i,'read',{path:'/workspace/source-'+i+'.mjs'},i+2)),
       settled('web-1','web_search',{query:'版本更新记录'},12),settled('web-2','web_fetch',{url:'https://example.test/releases'},13),

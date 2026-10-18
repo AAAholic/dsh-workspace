@@ -1,6 +1,6 @@
 {
   "name": "dsh-workspace",
-  "version": "0.1.2-dsh021rc2.0",
+  "version": "0.1.3-dsh021rc2.0",
   "type": "module",
   "description": "A session-aware progress and plugin workspace for DeepSeek Harness.",
   "repository": {
