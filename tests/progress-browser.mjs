@@ -17,7 +17,7 @@ const conversationCss = JSON.parse(hostPackage('dsh-client-ui-conversation/lib/c
 const entry = `
 import React, {useSyncExternalStore} from 'react';
 import {createRoot} from 'react-dom/client';
-const {apply,PROGRESS_KIND,PLUGINS_KIND}=globalThis.__TimelineWorkspace;
+const {applyWorkspace:apply,PROGRESS_KIND,PLUGINS_KIND}=globalThis.__TimelineWorkspace;
 const source=value=>{let current=value;const listeners=new Set();return {getSnapshot:()=>current,subscribe:fn=>{listeners.add(fn);return ()=>listeners.delete(fn)},set:value=>{current=value;for(const fn of listeners)fn()}}};
 const hook=store=>selector=>selector(useSyncExternalStore(store.subscribe,store.getSnapshot,store.getSnapshot));
 const reopened=new URL(location.href).searchParams.has('completed');

@@ -25,7 +25,13 @@ DSH 对话正文旁的进度与插件卡片。用简明阶段和具体动作，�
 
 本插件还提供左历史栏 216px 默认宽度、上下文与余额区域适配、输入区局部渐隐，以及 `dsh-workspace:provider` 插件入口。已接入 whale-girl 助手开关；各插件仍负责自己的状态和设置。卸载 Workspace 会移除这些界面适配。
 
-当前兼容目标是 **DSH 0.2.1-rc.2 和 0.2.1-rc.3**。兼容声明只包含这两个已核对版本；后续宿主版本需要重新验证。本项目与 npm 上的同名包没有关系；保留 `private: true`，使用 GitHub 源码与打包文件分发。来源记录见 [LOCAL-SOURCE.json](LOCAL-SOURCE.json)。
+插件按实际加载结果处理兼容性，`engines.dsh` 使用 `*`：DSH 升级后继续尝试加载，不因版本号变化而禁用。此策略不会预先检测所有未来接口变化，也不承诺兼容尚未验证的 API。
+
+新增轻量客户端故障提醒：订阅 DSH 已记录的导入、同步和启动失败，以及能确认归属的界面渲染异常，为 context、workspace、whale-girl、forecast、GenUI、skin-center 六个插件显示原生提示。正常状态、等待依赖和版本变化保持安静。相同加载故障关闭后不重复，宿主明确恢复后若再次失败可重新提醒；同一界面注册实例的重复异常只提醒一次，重载后新实例可再次提醒。提示不展示原始错误或凭据，插件详情可通过宿主原生入口查看。
+
+提醒使用事件订阅和启动后的一次导入错误检查，没有独立后台进程、轮询或额外模型调用。它只覆盖当前客户端已明确报告且能确认插件归属的失败，不保证捕获所有后端错误或未知渲染归属。提醒界面与进度功能分开启动；若未来宿主不再提供所需通知接口，仍保留宿主原始诊断。
+
+本项目与 npm 上的同名包没有关系；保留 `private: true`，使用 GitHub 源码与打包文件分发。来源记录见 [LOCAL-SOURCE.json](LOCAL-SOURCE.json)。
 
 ## 开发与验证
 
@@ -41,14 +47,14 @@ pnpm pack
 
 生成的 `lib/client.js` 随包分发。只修改 `lib/client/*.mjs` 源文件，再执行构建；不要直接编辑生成文件。
 
-单元测试覆盖动作摘要、进度推导、会话边界与布局逻辑。安装了 DSH 的 macOS 可额外执行 `node tests/progress-browser.mjs`，加载实际 bundle 检查窄卡片、中文文案、等待、断线和工具导航。浏览器测试使用本机 Chrome 和 Playwright，宿主契约测试从已安装 DSH 读取资源；其他环境会跳过要求宿主的测试。可通过 `DSH_HOST_ASAR` 指定宿主资源、`DSH_PLAYWRIGHT_MODULES` 指定 Playwright 的模块解析入口。余额及助手集成测试还需要相应本地插件，余额插件位置可用 `DSH_CONTEXT_ROOT` 指定。
+单元测试覆盖动作摘要、进度推导、会话边界、布局逻辑，以及故障去重、恢复、正常/等待静默和卸载清理。执行 `node --test tests/plugin-health.test.mjs tests/plugin-lifecycle.test.mjs tests/health-toast.test.mjs` 可单独验证故障提醒；`node tests/health-preview.mjs` 启动本机隔离预览，加载当前 DSH 的原生 Toast 和样式，用合成事件检查提示、关闭与焦点，不连接真实 API。安装了 DSH 的 macOS 可额外执行 `node tests/progress-browser.mjs`，加载实际 bundle 检查窄卡片、中文文案、等待、断线和工具导航。浏览器测试使用本机 Chrome 和 Playwright，宿主契约测试从已安装 DSH 读取资源；其他环境会跳过要求宿主的测试。可通过 `DSH_HOST_ASAR` 指定宿主资源、`DSH_PLAYWRIGHT_MODULES` 指定 Playwright 的模块解析入口。余额及助手集成测试还需要相应本地插件，余额插件位置可用 `DSH_CONTEXT_ROOT` 指定。
 
 浏览器测试输出写入本包 `verification/` 的新目录，也可通过 `DSH_VERIFICATION_DIR` 指定位置。隔离浏览器结果与本机 DSH 实际界面检查分别记录。
 
 ## 安装与更新
 
-下载当前修订包 [dsh-workspace-0.1.3-dsh021rc3.0.tgz](https://github.com/AAAholic/dsh-workspace/raw/refs/heads/main/packages/dsh-workspace-0.1.3-dsh021rc3.0.tgz)，校验值见 [SHA256SUMS](packages/SHA256SUMS)。也可从本仓库源码执行 `pnpm pack`。在 DSH 插件管理中使用该本地包安装；不要直接安装 npm 同名包。更新前退出 DSH 并备份当前插件包和 profile 的依赖文件，安装新包后重启生效。保留旧 `.tgz` 可回退。
+下载当前修订包 [dsh-workspace-0.1.4.tgz](https://github.com/AAAholic/dsh-workspace/raw/refs/heads/main/packages/dsh-workspace-0.1.4.tgz)，校验值见 [SHA256SUMS](packages/SHA256SUMS)。也可从本仓库源码执行 `pnpm pack`。在 DSH 插件管理中使用该本地包安装；不要直接安装 npm 同名包。更新前退出 DSH 并备份当前插件包和 profile 的依赖文件，安装新包后重启生效。保留旧 `.tgz` 可回退。
 
 ## 本次更新
 
-`0.1.3-dsh021rc3.0`：补充 DSH 0.2.1-rc.3 的兼容声明，修复宿主升级后插件因旧版精确版本限制而未加载的问题。进度卡、布局与动作摘要的实现保持不变。完整更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+`0.1.4`：取消 DSH 版本门禁，宿主更新后继续尝试加载；检测到明确的客户端加载、启动或界面异常时显示原生提醒。进度推导、卡片布局和动作摘要保留原有行为。完整更新记录见 [CHANGELOG.md](CHANGELOG.md)。

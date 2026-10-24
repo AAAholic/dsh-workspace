@@ -17,7 +17,7 @@ const conversation=hostPackage('dsh-client-ui-conversation/lib/client.js');
 const css=JSON.parse(conversation.match(/const css\$4 = ("[^\n]+")/)[1]);
 const source=`
 import React from 'react';import {createRoot} from 'react-dom/client';
-import {apply} from ${JSON.stringify(path.join(base,'lib/client/index.mjs'))};
+import {applyWorkspace as apply} from ${JSON.stringify(path.join(base,'lib/client/index.mjs'))};
 import {mountSharkCompanion} from ${JSON.stringify(path.join(whale,'lib/client/shark-companion.mjs'))};
 import {registerWorkspaceProvider} from ${JSON.stringify(path.join(whale,'lib/client/workspace-provider.mjs'))};
 const store=value=>{let current=value;const listeners=new Set();return {getSnapshot:()=>current,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},set:value=>{current=value;for(const fn of listeners)fn()}}};
