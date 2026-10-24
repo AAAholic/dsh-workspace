@@ -25,7 +25,7 @@ DSH 对话正文旁的进度与插件卡片。用简明阶段和具体动作，�
 
 本插件还提供左历史栏 216px 默认宽度、上下文与余额区域适配、输入区局部渐隐，以及 `dsh-workspace:provider` 插件入口。已接入 whale-girl 助手开关；各插件仍负责自己的状态和设置。卸载 Workspace 会移除这些界面适配。
 
-当前兼容目标是 **DSH 0.2.1-rc.2**。本项目与 npm 上的同名包没有关系；保留 `private: true`，使用 GitHub 源码与打包文件分发。来源记录见 [LOCAL-SOURCE.json](LOCAL-SOURCE.json)。
+当前兼容目标是 **DSH 0.2.1-rc.2 和 0.2.1-rc.3**。兼容声明只包含这两个已核对版本；后续宿主版本需要重新验证。本项目与 npm 上的同名包没有关系；保留 `private: true`，使用 GitHub 源码与打包文件分发。来源记录见 [LOCAL-SOURCE.json](LOCAL-SOURCE.json)。
 
 ## 开发与验证
 
@@ -47,8 +47,8 @@ pnpm pack
 
 ## 安装与更新
 
-从本仓库源码执行 `pnpm pack`，或下载仓库分发的 `.tgz`。在 DSH 插件管理中使用该本地包安装；不要直接安装 npm 同名包。更新前退出 DSH 并备份当前插件包和 profile 的依赖文件，安装新包后重启生效。保留旧 `.tgz` 可回退。
+下载当前修订包 [dsh-workspace-0.1.3-dsh021rc3.0.tgz](https://github.com/AAAholic/dsh-workspace/raw/refs/heads/main/packages/dsh-workspace-0.1.3-dsh021rc3.0.tgz)，校验值见 [SHA256SUMS](packages/SHA256SUMS)。也可从本仓库源码执行 `pnpm pack`。在 DSH 插件管理中使用该本地包安装；不要直接安装 npm 同名包。更新前退出 DSH 并备份当前插件包和 profile 的依赖文件，安装新包后重启生效。保留旧 `.tgz` 可回退。
 
 ## 本次更新
 
-`0.1.3-dsh021rc2.0`：修正卡片与顶部标签栏重叠；动作只显示主要内容，合并同目标的重复检查；计划标题移除重复阶段前缀。
+`0.1.3-dsh021rc3.0`：补充 DSH 0.2.1-rc.3 的兼容声明，修复宿主升级后插件因旧版精确版本限制而未加载的问题。进度卡、布局与动作摘要的实现保持不变。完整更新记录见 [CHANGELOG.md](CHANGELOG.md)。

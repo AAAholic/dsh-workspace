@@ -2,8 +2,8 @@
   "origin": "local-custom-plugin",
   "upstream_repository": null,
   "npm_package_relationship": "No relationship to the public npm package named dsh-workspace.",
-  "host_contract_target": "0.2.1-rc.2",
+  "host_contract_target": "0.2.1-rc.2 || 0.2.1-rc.3",
   "host_evidence": "Installed app.asar source review and isolated tests; native runtime acceptance is separate.",
-  "updated_date": "2026-10-18",
+  "updated_date": "2026-10-24",
   "repository": "https://github.com/AAAholic/dsh-workspace"
 }
